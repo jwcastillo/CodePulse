@@ -1,0 +1,35 @@
+FROM python:3.10-slim
+
+# Install git and dependencies
+RUN apt-get update && \
+    apt-get install -y git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy source code
+COPY src/ /app/src/
+COPY setup.py /app/
+
+# Install CodePulse
+RUN pip install --no-cache-dir -e .
+
+# Install requests for pushing to Pushgateway
+RUN pip install --no-cache-dir requests
+
+# Copy analysis script
+COPY k8s/analyze_and_export.py /app/
+
+# Make it executable
+RUN chmod +x /app/analyze_and_export.py
+
+# Run as non-root user
+RUN useradd -m -u 1000 analyzer && \
+    chown -R analyzer:analyzer /app
+
+USER analyzer
+
+# Default command
+CMD ["python3", "/app/analyze_and_export.py"]

@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: codepulse-config
+  namespace: monitoring
+data:
+  project.name: "my-java-app"
+  git.repo.url: "https://github.com/your-org/your-repo.git"
+  git.branch: "main"
+  analyzers: "jvm-performance,spring-data,spring-security,spring-rest"
+  prometheus.pushgateway.url: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
+
+  analyze_and_export.py: |
+    #!/usr/bin/env python3
+    import os
+    import sys
+    from pathlib import Path
+    import subprocess
+    import requests
+
+    sys.path.insert(0, '/app/src')
+
+    from analyzers.java.jvm_performance_analyzer import JVMPerformanceAnalyzer
+    from analyzers.java.spring_data_analyzer import SpringDataAnalyzer
+    from analyzers.java.spring_security_analyzer import SpringSecurityAnalyzer
+    from analyzers.java.spring_rest_analyzer import SpringRestAnalyzer
+    from exporters.prometheus_exporter import PrometheusExporter
+
+    # Configuración
+    PROJECT_NAME = os.getenv('PROJECT_NAME', 'unknown')
+    PUSHGATEWAY_URL = os.getenv('PROMETHEUS_PUSHGATEWAY', '')
+    ANALYZERS = os.getenv('ANALYZERS', 'jvm-performance').split(',')
+    GIT_BRANCH = os.getenv('GIT_BRANCH', 'main')
+    WORKSPACE = Path('/workspace')
+
+    # Get commit SHA
+    try:
+        commit_sha = subprocess.check_output(
+            ['git', '-C', str(WORKSPACE), 'rev-parse', 'HEAD'],
+            text=True
+        ).strip()[:8]
+    except:
+        commit_sha = 'unknown'
+
+    # Mapear analyzers
+    analyzer_map = {
+        'jvm-performance': JVMPerformanceAnalyzer(),
+        'spring-data': SpringDataAnalyzer(),
+        'spring-security': SpringSecurityAnalyzer(),
+        'spring-rest': SpringRestAnalyzer()
+    }
+
+    exporter = PrometheusExporter()
+    all_metrics = []
+
+    # Analizar con cada analyzer
+    for analyzer_name in ANALYZERS:
+        analyzer_name = analyzer_name.strip()
+        if analyzer_name not in analyzer_map:
+            print(f"⚠️  Unknown analyzer: {analyzer_name}")
+            continue
+
+        print(f"🔍 Running {analyzer_name} analyzer...")
+        analyzer = analyzer_map[analyzer_name]
+        result = analyzer.analyze_directory(WORKSPACE)
+
+        print(f"   Found {len(result.issues)} issues")
+
+        # Exportar métricas
+        metrics = exporter.export_result(
+            result,
+            analyzer_name=analyzer_name,
+            project_name=PROJECT_NAME,
+            branch=GIT_BRANCH,
+            commit_sha=commit_sha
+        )
+        all_metrics.append(metrics)
+
+        # Guardar a archivo
+        metrics_file = Path(f'/metrics/metrics_{analyzer_name}.txt')
+        with open(metrics_file, 'w') as f:
+            f.write(metrics)
+        print(f"   ✅ Metrics saved to {metrics_file}")
+
+    # Combinar todas las métricas
+    combined_metrics = '\n'.join(all_metrics)
+
+    # Push a Pushgateway si está configurado
+    if PUSHGATEWAY_URL:
+        try:
+            url = f"{PUSHGATEWAY_URL}/metrics/job/codepulse/instance/{PROJECT_NAME}"
+            response = requests.post(
+                url,
+                data=combined_metrics,
+                headers={'Content-Type': 'text/plain'}
+            )
+            response.raise_for_status()
+            print(f"✅ Metrics pushed to {PUSHGATEWAY_URL}")
+        except Exception as e:
+            print(f"❌ Error pushing metrics: {e}")
+            sys.exit(1)
+    else:
+        print("⚠️  PROMETHEUS_PUSHGATEWAY not configured, skipping push")
+
+    print("✅ Analysis and export completed successfully")

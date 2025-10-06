@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: codepulse-analyzer
+  namespace: monitoring
+spec:
+  schedule: "0 * * * *"  # Every hour
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: codepulse
+        spec:
+          serviceAccountName: codepulse-analyzer
+          restartPolicy: OnFailure
+
+          initContainers:
+          - name: git-clone
+            image: alpine/git:latest
+            command:
+              - sh
+              - -c
+              - |
+                git clone ${GIT_REPO_URL} -b ${GIT_BRANCH} /workspace
+            env:
+            - name: GIT_REPO_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: git.repo.url
+            - name: GIT_BRANCH
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: git.branch
+            volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+
+          containers:
+          - name: analyzer
+            image: codepulse/analyzer:latest
+            imagePullPolicy: Always
+            env:
+            - name: PROJECT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: project.name
+            - name: PROMETHEUS_PUSHGATEWAY
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: prometheus.pushgateway.url
+            - name: ANALYZERS
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: analyzers
+            - name: GIT_BRANCH
+              valueFrom:
+                configMapKeyRef:
+                  name: codepulse-config
+                  key: git.branch
+            volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: metrics
+              mountPath: /metrics
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "2000m"
+
+          volumes:
+          - name: workspace
+            emptyDir: {}
+          - name: metrics
+            emptyDir: {}

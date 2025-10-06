@@ -1,0 +1,192 @@
+name: CodePulse Metrics
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at midnight
+    - cron: '0 0 * * *'
+
+env:
+  PROMETHEUS_PUSHGATEWAY: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+  PROJECT_NAME: ${{ github.repository }}
+
+jobs:
+  analyze-and-export-metrics:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        analyzer:
+          - jvm-performance
+          - spring-data
+          - spring-security
+          - spring-rest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install requests
+
+      - name: Run Analysis
+        id: analysis
+        run: |
+          python3 << 'EOF'
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, 'src')
+
+          from analyzers.java.jvm_performance_analyzer import JVMPerformanceAnalyzer
+          from analyzers.java.spring_data_analyzer import SpringDataAnalyzer
+          from analyzers.java.spring_security_analyzer import SpringSecurityAnalyzer
+          from analyzers.java.spring_rest_analyzer import SpringRestAnalyzer
+          from exporters.prometheus_exporter import PrometheusExporter
+          from core.models import Severity
+
+          # Mapear analyzer names
+          analyzer_map = {
+              'jvm-performance': JVMPerformanceAnalyzer(),
+              'spring-data': SpringDataAnalyzer(),
+              'spring-security': SpringSecurityAnalyzer(),
+              'spring-rest': SpringRestAnalyzer()
+          }
+
+          analyzer_name = "${{ matrix.analyzer }}"
+          analyzer = analyzer_map[analyzer_name]
+
+          # Analizar
+          print(f"🔍 Running {analyzer_name} analyzer...")
+          result = analyzer.analyze_directory(Path("./src"))
+
+          # Stats
+          critical = result.get_issues_by_severity(Severity.CRITICAL)
+          print(f"Found {len(result.issues)} issues ({len(critical)} critical)")
+
+          # Exportar métricas
+          exporter = PrometheusExporter()
+          metrics = exporter.export_result(
+              result,
+              analyzer_name=analyzer_name,
+              project_name=os.getenv('PROJECT_NAME', 'unknown'),
+              branch=os.getenv('GITHUB_REF_NAME', 'main'),
+              commit_sha=os.getenv('GITHUB_SHA', 'unknown')
+          )
+
+          # Guardar métricas
+          with open(f'metrics-{analyzer_name}.txt', 'w') as f:
+              f.write(metrics)
+
+          print(f"✅ Metrics exported to metrics-{analyzer_name}.txt")
+
+          # Output para GitHub
+          print(f"::set-output name=total_issues::{len(result.issues)}")
+          print(f"::set-output name=critical_issues::{len(critical)}")
+
+          # Fallar si hay issues críticos
+          if len(critical) > 0:
+              print(f"❌ Found {len(critical)} critical issues")
+              sys.exit(1)
+          EOF
+
+      - name: Push to Prometheus Pushgateway
+        if: env.PROMETHEUS_PUSHGATEWAY != ''
+        run: |
+          curl -X POST \
+            -H "Content-Type: text/plain" \
+            --data-binary @metrics-${{ matrix.analyzer }}.txt \
+            "${PROMETHEUS_PUSHGATEWAY}/metrics/job/codepulse-ci/instance/${PROJECT_NAME}/analyzer/${{ matrix.analyzer }}"
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: codepulse-metrics
+          path: metrics-*.txt
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const metrics = fs.readFileSync('metrics-${{ matrix.analyzer }}.txt', 'utf8');
+
+            // Parse metrics for summary
+            const totalIssues = '${{ steps.analysis.outputs.total_issues }}';
+            const criticalIssues = '${{ steps.analysis.outputs.critical_issues }}';
+
+            const body = `## CodePulse Analysis Results - ${{ matrix.analyzer }}
+
+            📊 **Summary:**
+            - Total Issues: ${totalIssues}
+            - Critical Issues: ${criticalIssues}
+
+            ${criticalIssues > 0 ? '❌ **Critical issues found!** Please fix before merging.' : '✅ **No critical issues found**'}
+
+            <details>
+            <summary>Full Metrics</summary>
+
+            \`\`\`
+            ${metrics}
+            \`\`\`
+            </details>
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: body
+            });
+
+      - name: Fail if critical issues
+        if: steps.analysis.outputs.critical_issues > 0
+        run: |
+          echo "❌ Analysis failed: ${{ steps.analysis.outputs.critical_issues }} critical issues found"
+          exit 1
+
+  aggregate-metrics:
+    needs: analyze-and-export-metrics
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: codepulse-metrics
+
+      - name: Combine metrics
+        run: |
+          cat metrics-*.txt > combined-metrics.txt
+          echo "📊 Combined metrics from all analyzers"
+
+      - name: Push combined metrics
+        if: env.PROMETHEUS_PUSHGATEWAY != ''
+        run: |
+          curl -X POST \
+            -H "Content-Type: text/plain" \
+            --data-binary @combined-metrics.txt \
+            "${PROMETHEUS_PUSHGATEWAY}/metrics/job/codepulse-ci/instance/${PROJECT_NAME}"
+
+      - name: Create summary
+        run: |
+          echo "# CodePulse Analysis Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Metrics have been exported to Prometheus" >> $GITHUB_STEP_SUMMARY
+          echo "View dashboards: [Grafana](https://grafana.example.com/d/codepulse)" >> $GITHUB_STEP_SUMMARY

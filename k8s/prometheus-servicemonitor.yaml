@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: codepulse-pushgateway
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-pushgateway
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

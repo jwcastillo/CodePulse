@@ -1,0 +1,379 @@
+{
+  "dashboard": {
+    "title": "CodePulse - Before/After Comparison",
+    "tags": ["codepulse", "comparison", "improvement"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "5m",
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Quality Score: Before vs After",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "codepulse_quality_score{project=\"$project\", branch=\"$branch\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "fields": "",
+            "calcs": ["diff"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": -100,
+                  "color": "red"
+                },
+                {
+                  "value": 0,
+                  "color": "yellow"
+                },
+                {
+                  "value": 10,
+                  "color": "green"
+                }
+              ]
+            },
+            "mappings": []
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Critical Issues Reduction",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"critical\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "fields": "",
+            "calcs": ["diff", "diffperc"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": -1000,
+                  "color": "green"
+                },
+                {
+                  "value": 0,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Total Issues Reduction",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_total_issues{project=\"$project\", branch=\"$branch\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "fields": "",
+            "calcs": ["diff", "diffperc"]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Issues Reduction Over Time",
+        "type": "graph",
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\"}) by (severity)",
+            "legendFormat": "{{severity}}",
+            "refId": "A"
+          }
+        ],
+        "seriesOverrides": [
+          {
+            "alias": "critical",
+            "color": "#F2495C",
+            "linewidth": 3
+          },
+          {
+            "alias": "high",
+            "color": "#FF9830",
+            "linewidth": 2
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Number of Issues"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "Critical Issues Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 5,
+        "title": "Improvement by Category",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_category{project=\"$project\", branch=\"$branch\"}) by (category)",
+            "legendFormat": "{{category}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        },
+        "transformations": [
+          {
+            "id": "calculateField",
+            "options": {
+              "mode": "reduceRow",
+              "reduce": {
+                "reducer": "diff"
+              },
+              "alias": "Change"
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Improvement by Analyzer",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "codepulse_total_issues{project=\"$project\", branch=\"$branch\"}",
+            "legendFormat": "{{analyzer}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "lcd"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Performance Category - Detailed Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 26
+        },
+        "targets": [
+          {
+            "expr": "codepulse_issues_by_category{project=\"$project\", branch=\"$branch\", category=\"performance\"}",
+            "legendFormat": "{{analyzer}}",
+            "refId": "A"
+          }
+        ],
+        "stack": false,
+        "fill": 0,
+        "linewidth": 2
+      },
+      {
+        "id": 8,
+        "title": "Security Category - Detailed Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 26
+        },
+        "targets": [
+          {
+            "expr": "codepulse_issues_by_category{project=\"$project\", branch=\"$branch\", category=\"security\"}",
+            "legendFormat": "{{analyzer}}",
+            "refId": "A"
+          }
+        ],
+        "seriesOverrides": [
+          {
+            "alias": "/.*/",
+            "color": "#F2495C"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Weekly Improvement Summary",
+        "type": "table",
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 34
+        },
+        "targets": [
+          {
+            "expr": "sum(changes(codepulse_total_issues{project=\"$project\", branch=\"$branch\"}[7d])) by (analyzer)",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "analyzer": "Analyzer",
+                "Value": "Issues Fixed (Last 7 days)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Commit Impact on Quality",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 44
+        },
+        "targets": [
+          {
+            "expr": "codepulse_quality_score{project=\"$project\", branch=\"$branch\"}",
+            "legendFormat": "{{analyzer}} ({{commit}})",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Quality Score",
+            "min": 0,
+            "max": 100
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "project",
+          "type": "query",
+          "query": "label_values(codepulse_total_issues, project)",
+          "refresh": 1
+        },
+        {
+          "name": "branch",
+          "type": "query",
+          "query": "label_values(codepulse_total_issues{project=\"$project\"}, branch)",
+          "refresh": 1,
+          "current": {
+            "text": "main",
+            "value": "main"
+          }
+        }
+      ]
+    }
+  }
+}

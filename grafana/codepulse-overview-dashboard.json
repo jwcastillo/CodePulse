@@ -1,0 +1,471 @@
+{
+  "dashboard": {
+    "title": "CodePulse - Code Quality Overview",
+    "tags": ["codepulse", "code-quality", "static-analysis"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "5m",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Quality Score Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "codepulse_quality_score{project=\"$project\", branch=\"$branch\"}",
+            "legendFormat": "{{analyzer}} - Quality Score",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Quality Score",
+            "logBase": 1,
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "lines": true,
+        "fill": 1,
+        "linewidth": 2,
+        "pointradius": 5,
+        "tooltip": {
+          "shared": true,
+          "sort": 0
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true
+        }
+      },
+      {
+        "id": 2,
+        "title": "Total Issues by Severity",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"critical\"})",
+            "legendFormat": "Critical",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"high\"})",
+            "legendFormat": "High",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"medium\"})",
+            "legendFormat": "Medium",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"low\"})",
+            "legendFormat": "Low",
+            "refId": "D"
+          }
+        ],
+        "seriesOverrides": [
+          {
+            "alias": "Critical",
+            "color": "#F2495C"
+          },
+          {
+            "alias": "High",
+            "color": "#FF9830"
+          },
+          {
+            "alias": "Medium",
+            "color": "#FADE2A"
+          },
+          {
+            "alias": "Low",
+            "color": "#73BF69"
+          }
+        ],
+        "stack": true,
+        "fill": 5
+      },
+      {
+        "id": 3,
+        "title": "Current Critical Issues",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"critical\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "background",
+          "orientation": "auto",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Current High Issues",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 3,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"high\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "background"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 5,
+                  "color": "yellow"
+                },
+                {
+                  "value": 10,
+                  "color": "orange"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Issue Density (per 1000 lines)",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 6,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "avg(codepulse_issue_density{project=\"$project\", branch=\"$branch\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 5,
+                  "color": "yellow"
+                },
+                {
+                  "value": 10,
+                  "color": "orange"
+                },
+                {
+                  "value": 20,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Total Lines of Code",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 3,
+          "x": 9,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "max(codepulse_total_lines{project=\"$project\", branch=\"$branch\"})",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "blue"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Issues by Category",
+        "type": "piechart",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(codepulse_issues_by_category{project=\"$project\", branch=\"$branch\"}) by (category)",
+            "legendFormat": "{{category}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          },
+          "pieType": "donut"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Issues by Analyzer",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "codepulse_total_issues{project=\"$project\", branch=\"$branch\"}",
+            "legendFormat": "{{analyzer}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 10,
+                  "color": "yellow"
+                },
+                {
+                  "value": 50,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Performance Issues Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "codepulse_issues_by_category{project=\"$project\", branch=\"$branch\", category=\"performance\"}",
+            "legendFormat": "{{analyzer}} - Performance",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Security Issues Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "codepulse_issues_by_category{project=\"$project\", branch=\"$branch\", category=\"security\"}",
+            "legendFormat": "{{analyzer}} - Security",
+            "refId": "A"
+          }
+        ],
+        "seriesOverrides": [
+          {
+            "alias": "/.*/",
+            "color": "#F2495C"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Critical Issues by Analyzer",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "codepulse_issues_by_severity{project=\"$project\", branch=\"$branch\", severity=\"critical\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true,
+                "instance": true,
+                "job": true
+              },
+              "indexByName": {},
+              "renameByName": {
+                "Value": "Critical Issues",
+                "analyzer": "Analyzer",
+                "project": "Project",
+                "branch": "Branch",
+                "commit": "Commit"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "project",
+          "type": "query",
+          "query": "label_values(codepulse_total_issues, project)",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false
+        },
+        {
+          "name": "branch",
+          "type": "query",
+          "query": "label_values(codepulse_total_issues{project=\"$project\"}, branch)",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false
+        },
+        {
+          "name": "analyzer",
+          "type": "query",
+          "query": "label_values(codepulse_total_issues{project=\"$project\", branch=\"$branch\"}, analyzer)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "changes(codepulse_total_issues{project=\"$project\", branch=\"$branch\"}[5m]) != 0",
+          "name": "Code Analysis",
+          "step": "5m",
+          "tagKeys": "commit",
+          "titleFormat": "Analysis Run",
+          "textFormat": "{{analyzer}}: {{value}} issues"
+        }
+      ]
+    }
+  }
+}
