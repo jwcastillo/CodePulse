@@ -20,6 +20,7 @@ setup(
     author_email="team@codepulse.dev",
     url="https://github.com/yourusername/codepulse",
     packages=find_packages(where="src"),
+    py_modules=["cli"],  # the console script imports the top-level module src/cli.py
     package_dir={"": "src"},
     python_requires=">=3.8",
     install_requires=[
