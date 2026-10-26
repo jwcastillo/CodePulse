@@ -44,6 +44,9 @@ codepulse analyze --analyzer nodejs /path/to/nodejs/app
 # Analyze Next.js with HTML report
 codepulse analyze --analyzer nextjs --output report.html /path/to/nextjs/app
 
+# Security scan (secrets, injection, weak crypto, XSS sinks, TLS/JWT/CORS) + Spring Security config
+codepulse analyze --analyzer security,spring-security --format json /path/to/project
+
 # Multiple analyzers + JSON for CI/CD
 codepulse analyze --analyzer jvm,java21 --format json --output results.json /path/to/project
 ```
@@ -83,6 +86,28 @@ reporter.report(result)
 - Records for immutable data classes
 - Sequenced Collections for better APIs
 - String Templates for safer string interpolation
+
+### Security Analysis
+
+`--analyzer security` works on Java/Kotlin/Scala, JavaScript/TypeScript and config files (`.properties`, `.yml`, `.env`, `.json`, `.xml`). It skips `node_modules`, build output, `vendor`/`third-party` folders and minified `*.min.*` bundles. Every finding carries its CWE.
+
+| Pattern | Severity | CWE |
+|---|---|---|
+| AWS access key, private key, GitHub token | 🔴 Critical | CWE-798 / CWE-321 |
+| Slack token, hardcoded password/secret/API key (placeholders like `changeme` or `${VAR}` are ignored) | 🟠 High | CWE-798 |
+| SQL built with `+` or a template literal | 🔴 Critical | CWE-89 |
+| Shell command built from concatenated input | 🔴 Critical | CWE-78 |
+| JWT accepting the `none` algorithm | 🔴 Critical | CWE-347 |
+| `eval()` / `new Function()` | 🟠 High | CWE-95 |
+| TLS certificate or hostname verification disabled | 🟠 High | CWE-295 |
+| `dangerouslySetInnerHTML`, `innerHTML =` | 🟡 Medium | CWE-79 |
+| MD5/SHA-1 (only a problem for security uses) | 🟡 Medium | CWE-328 |
+| CORS `*` | 🟡 Medium | CWE-942 |
+| Java `ObjectInputStream` deserialization | 🟡 Medium | CWE-502 |
+
+`--analyzer spring-security` checks Spring Security configuration: CSRF, CORS, session management, JWT settings, password encoders, security headers.
+
+Like the other analyzers these are regex patterns with no data-flow tracking: treat findings as leads to review, and pair CodePulse with a dedicated SAST tool for audits.
 
 ### JavaScript/TypeScript Analysis
 
