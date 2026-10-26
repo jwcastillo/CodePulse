@@ -4,7 +4,7 @@ Unit tests for core models.
 """
 
 import pytest
-from src.core.models import Issue, Pattern, AnalysisResult, Severity, Category
+from core.models import Issue, Pattern, AnalysisResult, Severity, Category
 
 
 class TestSeverity:
