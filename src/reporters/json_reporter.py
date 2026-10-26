@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-from core import AnalysisResult
+from core import AnalysisResult, Severity
 
 
 class JSONReporter:
@@ -64,10 +64,10 @@ class JSONReporter:
                 "files_analyzed": result.files_analyzed,
                 "total_lines": result.total_lines,
                 "total_issues": len(result.issues),
-                "critical_issues": len(result.get_issues_by_severity("CRITICAL")),
-                "high_issues": len(result.get_issues_by_severity("HIGH")),
-                "medium_issues": len(result.get_issues_by_severity("MEDIUM")),
-                "low_issues": len(result.get_issues_by_severity("LOW")),
+                "critical_issues": len(result.get_issues_by_severity(Severity.CRITICAL)),
+                "high_issues": len(result.get_issues_by_severity(Severity.HIGH)),
+                "medium_issues": len(result.get_issues_by_severity(Severity.MEDIUM)),
+                "low_issues": len(result.get_issues_by_severity(Severity.LOW)),
                 "has_critical": result.has_critical_issues()
             },
             "statistics": result.stats,
