@@ -127,6 +127,19 @@ class BaseAnalyzer(ABC):
                 'error': str(e)
             })
 
+    @staticmethod
+    def _display_path(file_path: Path) -> str:
+        """Path relative to the cwd when possible; absolute otherwise.
+
+        Analyzing a directory outside the cwd (or passing a relative path) used to raise
+        ValueError here, which _analyze_file swallowed: the file was reported with 0 issues.
+        """
+        resolved = file_path.resolve()
+        try:
+            return str(resolved.relative_to(Path.cwd().resolve()))
+        except ValueError:
+            return str(resolved)
+
     def _apply_pattern(
         self,
         file_path: Path,
@@ -158,7 +171,7 @@ class BaseAnalyzer(ABC):
                 issue = Issue(
                     category=pattern.category,
                     severity=pattern.severity,
-                    file_path=str(file_path.relative_to(Path.cwd())),
+                    file_path=self._display_path(file_path),
                     line_number=line_num,
                     code_snippet=snippet,
                     description=pattern.description,
