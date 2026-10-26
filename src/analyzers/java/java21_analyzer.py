@@ -43,7 +43,7 @@ class Java21Analyzer(BaseAnalyzer):
                 severity=Severity.HIGH,
                 description='Traditional thread pool (Java 21: use Virtual Threads)',
                 impact='Virtual Threads: ~1M threads vs ~4K platform threads',
-                solution='Use Executors.newVirtualThreadPerTaskExecutor() for I/O-bound tasks',
+                solution='Use Virtual Threads: Executors.newVirtualThreadPerTaskExecutor() for I/O-bound tasks',
                 metadata={
                     'java_version': 21,
                     'feature': 'Virtual Threads',

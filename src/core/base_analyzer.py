@@ -32,9 +32,10 @@ class BaseAnalyzer(ABC):
             name: Human-readable name for this analyzer
         """
         self.name = name
-        self.patterns: Dict[str, Pattern] = {}
+        # Loaded once here so add/remove/enable/disable_pattern work before and across analyze_* calls
+        self.patterns: Dict[str, Pattern] = self._init_patterns()
         self.result = AnalysisResult()
-        self.file_extensions: Set[str] = set()
+        self.file_extensions: Set[str] = self.get_file_extensions()
 
     @abstractmethod
     def _init_patterns(self) -> Dict[str, Pattern]:
@@ -72,10 +73,6 @@ class BaseAnalyzer(ABC):
         self.result = AnalysisResult()
         self.result.metadata['analyzer'] = self.name
         self.result.metadata['directory'] = str(directory)
-
-        # Initialize patterns
-        self.patterns = self._init_patterns()
-        self.file_extensions = self.get_file_extensions()
 
         # Scan and analyze files
         files = self._scan_files(directory)

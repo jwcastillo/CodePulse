@@ -5,9 +5,9 @@ Unit tests for analyzers.
 
 import pytest
 from pathlib import Path
-from src.analyzers.java import JVMAnalyzer, Java21Analyzer
-from src.analyzers.javascript import NodeJSAnalyzer, NextJSAnalyzer
-from src.core import Severity, Category
+from analyzers.java import JVMAnalyzer, Java21Analyzer
+from analyzers.javascript import NodeJSAnalyzer, NextJSAnalyzer
+from core import Severity, Category
 
 
 class TestJVMAnalyzer:
@@ -139,3 +139,24 @@ class TestAnalyzerBase:
         analyzer.remove_pattern('string_concat_loop')
         assert 'string_concat_loop' not in analyzer.patterns
         assert len(analyzer.patterns) == initial_count - 1
+
+
+class TestPatternCustomizationSurvivesAnalysis:
+    """Regression: analyze_directory used to reload patterns, discarding disable/remove/add calls."""
+
+    JAVA = 'class S { String f(java.util.List<String> xs){ String o=""; for (String x : xs) { o += x + ","; } return o; } }'
+
+    def test_disabled_pattern_is_not_reported(self, tmp_path):
+        (tmp_path / "S.java").write_text(self.JAVA)
+        analyzer = JVMAnalyzer()
+        assert any(i.metadata["pattern"] == "string_concat_loop" for i in analyzer.analyze_directory(tmp_path).issues)
+        analyzer.disable_pattern("string_concat_loop")
+        for _ in range(2):  # and it stays disabled on later runs
+            issues = analyzer.analyze_directory(tmp_path).issues
+            assert not any(i.metadata["pattern"] == "string_concat_loop" for i in issues)
+
+    def test_removed_pattern_is_not_reported(self, tmp_path):
+        (tmp_path / "S.java").write_text(self.JAVA)
+        analyzer = JVMAnalyzer()
+        analyzer.remove_pattern("string_concat_loop")
+        assert not any(i.metadata["pattern"] == "string_concat_loop" for i in analyzer.analyze_directory(tmp_path).issues)

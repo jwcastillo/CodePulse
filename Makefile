@@ -47,7 +47,7 @@ install:
 
 # Tests
 test:
-	python -m pytest src/tests/ -v
+	python -m pytest tests src/tests -v
 	@echo "✅ Tests completados"
 
 # Análisis
