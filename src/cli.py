@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import List, Optional
 
 from core import BaseAnalyzer
-from analyzers.java import JVMAnalyzer, Java17Analyzer, Java21Analyzer
+from analyzers.java import JVMAnalyzer, Java17Analyzer, Java21Analyzer, SpringSecurityAnalyzer
 from analyzers.javascript import NodeJSAnalyzer, NextJSAnalyzer
+from analyzers.security import SecurityAnalyzer
 from reporters import ConsoleReporter, JSONReporter, HTMLReporter
 
 
@@ -23,6 +24,8 @@ class CodePulseCLI:
         'java21': Java21Analyzer,
         'nodejs': NodeJSAnalyzer,
         'nextjs': NextJSAnalyzer,
+        'security': SecurityAnalyzer,
+        'spring-security': SpringSecurityAnalyzer,
     }
 
     def __init__(self):

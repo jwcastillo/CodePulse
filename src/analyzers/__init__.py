@@ -2,6 +2,6 @@
 Analyzers package for CodePulse.
 """
 
-from . import java, javascript
+from . import java, javascript, security
 
-__all__ = ['java', 'javascript']
+__all__ = ['java', 'javascript', 'security']
